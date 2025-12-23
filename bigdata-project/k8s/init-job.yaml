@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-resources
+spec:
+  template:
+    spec:
+      containers:
+      # --- Task 1: Tạo Bucket trong MinIO ---
+      - name: init-minio
+        image: minio/mc
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          sleep 10;
+          # Kết nối tới bất kỳ node nào
+          mc alias set myminio http://minio-0.minio.default.svc.cluster.local:9000 minioadmin minioadmin;
+          mc mb myminio/sensor-data --ignore-existing;
+      # --- Task 2: Tạo Bảng trong Cassandra ---
+      - name: init-cassandra
+        image: cassandra:4.1
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          sleep 45; # Cassandra khởi động hơi lâu
+          cqlsh cassandra-0.cassandra.default.svc.cluster.local 9042 -e "
+            CREATE KEYSPACE IF NOT EXISTS metrics WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
+            CREATE TABLE IF NOT EXISTS metrics.counters (id uuid PRIMARY KEY, bucket_time text, total_count int, processed_at timestamp);
+          "
+      restartPolicy: OnFailure    # Nếu lỗi thì thử lại

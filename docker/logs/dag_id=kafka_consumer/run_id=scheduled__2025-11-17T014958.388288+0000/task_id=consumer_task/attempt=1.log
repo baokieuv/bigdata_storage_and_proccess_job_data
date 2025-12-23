@@ -1,0 +1,5 @@
+{"timestamp":"2025-11-17T01:49:59.831005Z","level":"info","event":"DAG bundles loaded: dags-folder","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager","filename":"manager.py","lineno":179}
+{"timestamp":"2025-11-17T01:49:59.834101Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/kafka_test.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2025-11-17T01:49:59.884340Z","level":"warning","event":"The `airflow.operators.python.PythonOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.python.PythonOperator'`.","category":"DeprecatedImportWarning","filename":"/opt/airflow/dags/kafka_test.py","lineno":2,"logger":"py.warnings"}
+{"timestamp":"2025-11-17T01:49:59.932545Z","level":"error","event":"%3|1763344199.932|FAIL|rdkafka#consumer-1| [thrd:['kafka:9092/bootstrap]: ['kafka:9092/bootstrap: Failed to resolve '['kafka:9092': Missing close-']' (after 0ms in state CONNECT)","logger":"task.stderr"}
+{"timestamp":"2025-11-17T01:49:59.933473Z","level":"info","event":"Wating message from topic: airflow_topic","logger":"task.stdout"}

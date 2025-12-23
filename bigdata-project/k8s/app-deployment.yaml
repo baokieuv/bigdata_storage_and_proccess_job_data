@@ -1,0 +1,84 @@
+# --- Producer: Sinh dữ liệu giả lập ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+  template:
+    metadata:
+      labels:
+        app: producer
+    spec:
+      containers:
+      - name: producer
+        image: us-central1-docker.pkg.dev/cool-phalanx-479802-g0/my-repo/bigdata-worker:test
+        imagePullPolicy: Always
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        command: ["python3", "/app/src/producer.py"]
+
+---
+# --- Ingestor: Đọc Kafka -> Ghi MinIO ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestor
+  template:
+    metadata:
+      labels:
+        app: ingestor
+    spec:
+      containers:
+      - name: ingestor
+        image: us-central1-docker.pkg.dev/cool-phalanx-479802-g0/my-repo/bigdata-worker:test
+        imagePullPolicy: Always
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        command: ["python3", "/app/src/kafka_to_minio.py"]
+
+---
+# --- Spark Processor: Xử lý data (MinIO -> Cassandra) ---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: spark-processor
+spec:
+  schedule: "*/1 * * * *"     # Chạy định kỳ 1 phút/lần
+  concurrencyPolicy: Forbid   # Không cho phép 2 job chạy chồng chéo
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: spark
+            image: us-central1-docker.pkg.dev/cool-phalanx-479802-g0/my-repo/bigdata-worker:test
+            imagePullPolicy: Always
+            command: ["/bin/bash", "-c"]
+            args:
+            - |
+              # 1. Lấy IP của Pod hiện tại (Driver)
+              MY_POD_IP=$(hostname -i)
+              echo ">>> Driver IP is: $MY_POD_IP"
+
+              # 2. Truyền IP đó vào cấu hình Spark để Worker biết đường kết nối lại
+              /opt/spark/bin/spark-submit \
+              --master spark://spark-master:7077 \
+              --deploy-mode client \
+              --packages org.apache.hadoop:hadoop-aws:3.3.4,com.datastax.spark:spark-cassandra-connector_2.12:3.5.0 \
+              --conf spark.driver.host=$MY_POD_IP \
+              --conf spark.driver.bindAddress=0.0.0.0 \
+              --conf spark.driver.port=30000 \
+              --conf spark.blockManager.port=30001 \
+              /app/src/spark_job.py
+          restartPolicy: OnFailure

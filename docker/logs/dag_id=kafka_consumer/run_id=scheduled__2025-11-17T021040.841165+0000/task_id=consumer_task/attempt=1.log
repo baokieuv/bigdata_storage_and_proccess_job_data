@@ -1,0 +1,6 @@
+{"timestamp":"2025-11-17T02:10:41.895442Z","level":"info","event":"DAG bundles loaded: dags-folder","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager","filename":"manager.py","lineno":179}
+{"timestamp":"2025-11-17T02:10:41.897799Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/kafka_test.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2025-11-17T02:10:41.973886Z","level":"warning","event":"The `airflow.operators.python.PythonOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.python.PythonOperator'`.","category":"DeprecatedImportWarning","filename":"/opt/airflow/dags/kafka_test.py","lineno":2,"logger":"py.warnings"}
+{"timestamp":"2025-11-17T02:10:42.316733Z","level":"info","event":"Wating message from topic: airflow_topic","logger":"task.stdout"}
+{"timestamp":"2025-11-17T02:10:45.411604Z","level":"info","event":"Received message: {'timestamp': '2025-11-17 01:56:46', 'message': 'Data from Producer', 'value': 100}","logger":"task.stdout"}
+{"timestamp":"2025-11-17T02:10:45.442964Z","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator","filename":"python.py","lineno":218}

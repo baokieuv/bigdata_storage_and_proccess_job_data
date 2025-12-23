@@ -1,0 +1,7 @@
+{"timestamp":"2025-11-17T15:03:31.923223Z","level":"info","event":"DAG bundles loaded: dags-folder","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager","filename":"manager.py","lineno":179}
+{"timestamp":"2025-11-17T15:03:31.926070Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/kafka_test.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2025-11-17T15:03:31.988865Z","level":"warning","event":"The `airflow.operators.python.PythonOperator` attribute is deprecated. Please use `'airflow.providers.standard.operators.python.PythonOperator'`.","category":"DeprecatedImportWarning","filename":"/opt/airflow/dags/kafka_test.py","lineno":2,"logger":"py.warnings"}
+{"timestamp":"2025-11-17T15:03:32.033543Z","level":"info","event":"-------------------------------------------------","logger":"task.stdout"}
+{"timestamp":"2025-11-17T15:03:32.034276Z","level":"info","event":"HELLO WORLD - Dữ liệu đã được gửi đi thành công!","logger":"task.stdout"}
+{"timestamp":"2025-11-17T15:03:32.034801Z","level":"info","event":"-------------------------------------------------","logger":"task.stdout"}
+{"timestamp":"2025-11-17T15:03:32.033527Z","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator","filename":"python.py","lineno":218}
