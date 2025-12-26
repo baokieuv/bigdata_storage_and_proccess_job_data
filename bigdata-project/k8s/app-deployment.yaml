@@ -48,37 +48,53 @@ spec:
         command: ["python3", "/app/src/kafka_to_minio.py"]
 
 ---
-# --- Spark Processor: Xử lý data (MinIO -> Cassandra) ---
-apiVersion: batch/v1
-kind: CronJob
+# --- Spark Streaming: Kafka -> Spark Streaming -> Elasticsearch ---
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: spark-processor
+  name: spark-streaming
 spec:
-  schedule: "*/1 * * * *"     # Chạy định kỳ 1 phút/lần
-  concurrencyPolicy: Forbid   # Không cho phép 2 job chạy chồng chéo
-  jobTemplate:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-streaming
+  template:
+    metadata:
+      labels:
+        app: spark-streaming
     spec:
-      template:
-        spec:
-          containers:
-          - name: spark
-            image: us-central1-docker.pkg.dev/cool-phalanx-479802-g0/my-repo/bigdata-worker:test
-            imagePullPolicy: Always
-            command: ["/bin/bash", "-c"]
-            args:
-            - |
-              # 1. Lấy IP của Pod hiện tại (Driver)
-              MY_POD_IP=$(hostname -i)
-              echo ">>> Driver IP is: $MY_POD_IP"
+      containers:
+      - name: spark-streaming
+        image: us-central1-docker.pkg.dev/cool-phalanx-479802-g0/my-repo/bigdata-worker:test
+        imagePullPolicy: Always
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          # 1. Lấy IP của Pod hiện tại (Driver)
+          MY_POD_IP=$(hostname -i)
+          echo ">>> Spark Streaming Driver IP is: $MY_POD_IP"
 
-              # 2. Truyền IP đó vào cấu hình Spark để Worker biết đường kết nối lại
-              /opt/spark/bin/spark-submit \
-              --master spark://spark-master:7077 \
-              --deploy-mode client \
-              --packages org.apache.hadoop:hadoop-aws:3.3.4,com.datastax.spark:spark-cassandra-connector_2.12:3.5.0 \
-              --conf spark.driver.host=$MY_POD_IP \
-              --conf spark.driver.bindAddress=0.0.0.0 \
-              --conf spark.driver.port=30000 \
-              --conf spark.blockManager.port=30001 \
-              /app/src/spark_job.py
-          restartPolicy: OnFailure
+          # 2. Chạy Spark Streaming job
+          /opt/spark/bin/spark-submit \
+          --master spark://spark-master:7077 \
+          --deploy-mode client \
+          --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.12.0 \
+          --conf spark.driver.host=$MY_POD_IP \
+          --conf spark.driver.bindAddress=0.0.0.0 \
+          --conf spark.driver.port=30000 \
+          --conf spark.blockManager.port=30001 \
+          --conf spark.sql.streaming.checkpointLocation=/tmp/spark-checkpoint-kafka-es \
+          --conf spark.sql.adaptive.enabled=true \
+          --conf spark.sql.adaptive.coalescePartitions.enabled=true \
+          /app/src/spark_streaming.py
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      restartPolicy: Always
