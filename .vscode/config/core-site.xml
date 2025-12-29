@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property>
+        <name>fs.defaultFS</name> // URI mặc định cho filesystem
+        <value>hdfs://namenode:8020</value>
+    </property>
+    <property>
+        <name>hadoop.http.staticuser.user</name>
+        <value>root</value>
+    </property>
+</configuration>
+// Thông tin kết nối đến NameNode 
