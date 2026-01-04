@@ -10,7 +10,13 @@ spec:
     - controller
     - broker
   storage:
-    type: ephemeral   # Dùng ổ tạm để test (mất dữ liệu khi restart pod), chạy thật -> sử dụng 'persistent-claim'
+    # type: ephemeral   # Dùng ổ tạm để test (mất dữ liệu khi restart pod), chạy thật -> sử dụng 'persistent-claim'
+    type: jbod
+    volumes:
+    - id: 0
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
 ---
 apiVersion: kafka.strimzi.io/v1
 kind: Kafka

@@ -35,7 +35,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: spark-master
-          image: apache/spark:3.5.1
+          image: apache/spark:3.4.1
           command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
           ports:
             - containerPort: 7077
@@ -55,7 +55,7 @@ metadata:
   labels:
     app: spark-worker
 spec:
-  replicas: 2     # Chạy 2 Worker để xử lý song song
+  replicas: 3     # Chạy 2 Worker để xử lý song song
   selector:
     matchLabels:
       app: spark-worker
@@ -66,7 +66,7 @@ spec:
     spec:
       containers:
         - name: spark-worker
-          image: apache/spark:3.5.1
+          image: apache/spark:3.4.1
           # Worker cần biết địa chỉ Master để đăng ký (spark://spark-master:7077)
           command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
           resources:

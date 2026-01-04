@@ -9,21 +9,6 @@ spec:
   clusterIP: None   # Headless Service
   selector:
     app: cassandra
-# ---
-# apiVersion: v1
-# kind: Service
-# metadata:
-#   name: cassandra-client
-#   labels:
-#     app: cassandra
-# spec:
-#   type: ClusterIP
-#   ports:
-#     - port: 9042
-#       targetPort: 9042
-#       name: cql
-#   selector:
-#     app: cassandra
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -46,18 +31,8 @@ spec:
         ports:
         - containerPort: 7000
           name: intra-node    # Port để các node Cassandra nói chuyện với nhau (Gossip)
-        # - containerPort: 7001
-        #   name: tls-intra-node
-        # - containerPort: 7199
-        #   name: jmx
         - containerPort: 9042
           name: cql
-        # resources:
-        #   requests:
-        #     memory: 1Gi
-        #     cpu: "500m"
-        #   limits:
-        #     memory: 1.5Gi
         # Thêm Probe để biết khi nào Database sẵn sàng nhận kết nối
         readinessProbe:
           exec:
@@ -86,11 +61,11 @@ spec:
       volumes:
       - name: data
         emptyDir: {}  # Ổ tạm
-  # volumeClaimTemplates:
-  # - metadata:
-  #     name: data
-  #   spec:
-  #     accessModes: ["ReadWriteOnce"]
-  #     resources:
-  #       requests:
-  #         storage: 1Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi

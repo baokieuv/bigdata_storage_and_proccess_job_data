@@ -46,6 +46,11 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /data
-      volumes:
-      - name: data
-        emptyDir: {}    # Dùng ổ tạm trên RAM/Disk của node
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
