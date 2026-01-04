@@ -1,5 +1,5 @@
 /venv
 /code
-/demo
+demo/postings.json
 /docker
 /k8s
