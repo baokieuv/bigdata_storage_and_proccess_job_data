@@ -2,7 +2,6 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, avg, count, max, min, current_timestamp, lit
 import sys
 
-# Khởi tạo Spark Session với config cho MinIO và Cassandr
 spark = SparkSession.builder \
     .appName("JobAnalyticsBatch") \
     .config("spark.hadoop.fs.s3a.endpoint", "http://minio.default.svc.cluster.local:9000") \
