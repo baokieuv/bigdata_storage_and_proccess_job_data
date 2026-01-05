@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment      # "Deployment"
+metadata:
+  name: webapp-deployment  
+  labels:
+    app: webapp
+spec:
+  replicas: 1     # how many Pods you want to create?
+  selector:
+    matchLabels:      #identify a set of resouces -> match all Pods with label "app:mongo"
+      app: webapp      # SHOULD BE MATCH
+  template:     # configuration for Pod -> Deployment manages Pod -> has its own "metadata" and "spec" section
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:         # which image?, which port?, one pod can run multiple containers but usually run one container per pod
+      - name: webapp     # container name
+        image: nanajanashia/k8s-demo-app:v1.0  # docker image
+        ports:
+        - containerPort: 3000  # listen port (SAME)
+        env:
+        - name: USER_NAME
+          # value: myuser   # can set directly
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-user
+        - name: USER_PWD
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: mongo-password
+        - name: DB_URL
+          valueFrom:
+            configMapKeyRef:
+              name: mongo-config
+              key: mongo-url 
+---   # separate parts
+apiVersion: v1
+kind: Service     # "Service"
+metadata:
+  name: webapp-service   # an arbitrary name
+spec:
+  type: NodePort      # to make service become an external service
+  selector:   # select pods to forward the request to -> connecting Service to Pods
+    app: webapp  # SHOULD BE MATCH
+  ports:
+    - protocol:
+      port: 3000             # service port
+      targetPort: 3000       # containerPort of Deployment (SAME)
+      nodePort: 30100          # must be between 30000-32767
+
+# type: Service type
+# Default = ClusterIP -> an internal service
+# NodePort -> external service
+# - nodePort: exposes the service on each Node's IP at a static port
