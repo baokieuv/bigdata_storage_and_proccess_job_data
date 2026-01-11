@@ -13,10 +13,10 @@ spec:
     # type: ephemeral   # Dùng ổ tạm để test (mất dữ liệu khi restart pod), chạy thật -> sử dụng 'persistent-claim'
     type: jbod
     volumes:
-    - id: 0
-      type: persistent-claim
-      size: 10Gi
-      deleteClaim: false
+      - id: 0
+        type: persistent-claim
+        size: 10Gi
+        deleteClaim: false
 ---
 apiVersion: kafka.strimzi.io/v1
 kind: Kafka
@@ -24,7 +24,7 @@ metadata:
   name: my-cluster
   annotations:
     strimzi.io/node-pools: enable
-    strimzi.io/kraft: enable  # Bật chế độ KRaft (Modern Kafka)
+    strimzi.io/kraft: enable # Bật chế độ KRaft (Modern Kafka)
 spec:
   kafka:
     version: 4.0.0
@@ -37,9 +37,9 @@ spec:
       # --- Cấu hình An toàn dữ liệu (Data Durability) ---
       offsets.topic.replication.factor: 3 # Lưu offset của consumer trên cả 3 node
       transaction.state.log.replication.factor: 3
-      transaction.state.log.min.isr: 2    # Tối thiểu 2 node phải sống để transaction hoạt động
-      default.replication.factor: 3       # Mặc định mọi topic tạo ra sẽ có 3 bản sao
-      min.insync.replicas: 2              # Producer phải nhận được confirm từ ít nhất 2 node mới coi là ghi thành công
+      transaction.state.log.min.isr: 2 # Tối thiểu 2 node phải sống để transaction hoạt động
+      default.replication.factor: 3 # Mặc định mọi topic tạo ra sẽ có 3 bản sao
+      min.insync.replicas: 2 # Producer phải nhận được confirm từ ít nhất 2 node mới coi là ghi thành công
   entityOperator:
     topicOperator: {}
     userOperator: {}

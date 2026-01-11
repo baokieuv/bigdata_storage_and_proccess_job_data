@@ -6,36 +6,36 @@ spec:
   template:
     spec:
       containers:
-      # --- Task 1: Tạo Bucket trong MinIO ---
-      - name: init-minio
-        image: minio/mc
-        command: ["/bin/sh", "-c"]
-        args:
-        - |
-          sleep 10;
-          # Kết nối tới bất kỳ node nào
-          mc alias set myminio http://minio-0.minio.default.svc.cluster.local:9000 minioadmin minioadmin;
-          mc mb myminio/job-raw-data --ignore-existing;
-      # --- Task 2: Tạo Bảng trong Cassandra ---
-      - name: init-cassandra
-        image: cassandra:4.1
-        command: ["/bin/sh", "-c"]
-        args:
-        - |
-          sleep 45; # Cassandra khởi động hơi lâu
-          cqlsh cassandra-0.cassandra.default.svc.cluster.local 9042 -e "
-            CREATE KEYSPACE IF NOT EXISTS job_metrics WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
-            
-            CREATE TABLE IF NOT EXISTS job_metrics.company_analytics (
-              company_name text,
-              batch_id text,
-              job_count int,
-              avg_salary double,
-              max_salary double,
-              min_salary double,
-              last_updated timestamp,
-              PRIMARY KEY ((company_name), batch_id)
-            )WITH CLUSTERING ORDER BY (batch_id DESC);
-          "
-          echo "Cassandra Keyspace & Table created!";
-      restartPolicy: OnFailure    # Nếu lỗi thì thử lại
+        # --- Task 1: Tạo Bucket trong MinIO ---
+        - name: init-minio
+          image: minio/mc
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              sleep 10;
+              # Kết nối tới bất kỳ node nào
+              mc alias set myminio http://minio-0.minio.default.svc.cluster.local:9000 minioadmin minioadmin;
+              mc mb myminio/job-raw-data --ignore-existing;
+        # --- Task 2: Tạo Bảng trong Cassandra ---
+        - name: init-cassandra
+          image: cassandra:4.1
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              sleep 45; # Cassandra khởi động hơi lâu
+              cqlsh cassandra-0.cassandra.default.svc.cluster.local 9042 -e "
+                CREATE KEYSPACE IF NOT EXISTS job_metrics WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
+                
+                CREATE TABLE IF NOT EXISTS job_metrics.company_analytics (
+                  company_name text,
+                  batch_id text,
+                  job_count int,
+                  avg_salary double,
+                  max_salary double,
+                  min_salary double,
+                  last_updated timestamp,
+                  PRIMARY KEY ((company_name), batch_id)
+                )WITH CLUSTERING ORDER BY (batch_id DESC);
+              "
+              echo "Cassandra Keyspace & Table created!";
+      restartPolicy: OnFailure # Nếu lỗi thì thử lại

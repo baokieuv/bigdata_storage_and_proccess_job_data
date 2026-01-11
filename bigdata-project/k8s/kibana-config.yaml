@@ -6,9 +6,9 @@ spec:
   selector:
     app: kibana
   ports:
-  - protocol: TCP
-    port: 5601
-    targetPort: 5601
+    - protocol: TCP
+      port: 5601
+      targetPort: 5601
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -21,20 +21,20 @@ spec:
     matchLabels:
       app: kibana
   template:
-    metadata: 
+    metadata:
       labels:
         app: kibana
     spec:
       containers:
-      - name: kibana
-        image: docker.elastic.co/kibana/kibana:7.17.13
-        resources:
-          limits:
-            memory: 1Gi
-          requests:
-            memory: 500Mi
-        env:
-        - name: ELASTICSEARCH_HOSTS
-          value: "http://elasticsearch:9200"
-        ports:
-        - containerPort: 5601
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:7.17.13
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              memory: 500Mi
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch:9200"
+          ports:
+            - containerPort: 5601
