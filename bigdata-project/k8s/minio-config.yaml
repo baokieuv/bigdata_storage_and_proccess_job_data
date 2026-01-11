@@ -21,7 +21,7 @@ metadata:
   name: minio
 spec:
   serviceName: minio
-  replicas: 4 # MinIO Distributed yêu cầu tối thiểu 4 ổ đĩa (ở đây là 4 pod) để chạy Erasure Coding
+  replicas: 1 # Giảm xuống 1 pod để tiết kiệm tài nguyên
   selector:
     matchLabels:
       app: minio
@@ -37,7 +37,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              minio server http://minio-{0...3}.minio.default.svc.cluster.local/data --console-address ":9001"
+              minio server /data --console-address ":9001"
           env:
             - name: MINIO_ROOT_USER
               value: "minioadmin"
@@ -53,4 +53,4 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 10Gi
+            storage: 3Gi

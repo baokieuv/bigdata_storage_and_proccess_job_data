@@ -49,8 +49,8 @@ spec:
               value: "true" # Giữ container chạy foreground
           resources:
             requests:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "250m"
+              memory: "256Mi"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -59,7 +59,7 @@ metadata:
   labels:
     app: spark-worker
 spec:
-  replicas: 3 # Chạy 2 Worker để xử lý song song
+  replicas: 1 # Giảm xuống 1 worker để tiết kiệm tài nguyên
   selector:
     matchLabels:
       app: spark-worker
@@ -81,11 +81,10 @@ spec:
           resources:
             requests:
               cpu: "1000m"
-              memory: "2Gi" # Worker cần nhiều RAM để xử lý data
+              memory: "1Gi"
+            limits:
+              cpu: "1500m"
+              memory: "2Gi"
           env:
-            # - name: SPARK_WORKER_CORES
-            #   value: "1"
             - name: SPARK_WORKER_MEMORY
-              value: "1g" # RAM thực tế cấp cho các Executor bên trong Worker
-            # - name: SPARK_NO_DAEMONIZE
-            #   value: "true"
+              value: "1536m"

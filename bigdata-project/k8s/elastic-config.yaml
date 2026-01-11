@@ -20,7 +20,7 @@ metadata:
   name: es-cluster
 spec:
   serviceName: elasticsearch
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: elasticsearch
@@ -49,9 +49,9 @@ spec:
           image: docker.elastic.co/elasticsearch/elasticsearch:7.17.13
           resources:
             limits:
-              memory: 1Gi
+              memory: 512Mi
             requests:
-              memory: 500Mi
+              memory: 256Mi
           ports:
             - containerPort: 9200
               name: rest
@@ -69,7 +69,7 @@ spec:
             - name: cluster.initial_master_nodes
               value: "es-cluster-0,es-cluster-1,es-cluster-2"
             - name: ES_JAVA_OPTS
-              value: "-Xms512m -Xmx512m"
+              value: "-Xms256m -Xmx256m"
           volumeMounts:
             - name: data
               mountPath: /usr/share/elasticsearch/data
@@ -80,4 +80,4 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 5Gi
+            storage: 2Gi

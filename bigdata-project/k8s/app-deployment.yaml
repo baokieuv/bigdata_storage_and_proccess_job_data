@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: producer
-          image: baokieu/my-repo:v1
+          image: phantaii/bigdata_project:latest # SỬA
           imagePullPolicy: Always
           env:
             - name: PYTHONUNBUFFERED
@@ -40,59 +40,59 @@ spec:
     spec:
       containers:
         - name: ingestor
-          image: baokieu/my-repo:v1
+          image: phantaii/bigdata_project:latest #SỬA
           imagePullPolicy: Always
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
           command: ["python3", "/app/src/kafka_to_minio.py"]
 
----
-# 3. Spark Streaming (Kafka -> Elasticsearch)
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: spark-streaming
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: spark-streaming
-  template:
-    metadata:
-      labels:
-        app: spark-streaming
-    spec:
-      containers:
-        - name: spark
-          image: baokieu/my-repo:v1
-          imagePullPolicy: Always
-          command: ["/bin/bash", "-c"]
-          args:
-            - |
-              # 1. Lấy IP của Pod hiện tại (Driver)
-              MY_POD_IP=$(hostname -i)
-              echo ">>> Driver IP is: $MY_POD_IP"
+# ---
+# # 3. Spark Streaming (Kafka -> Elasticsearch)
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: spark-streaming
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: spark-streaming
+#   template:
+#     metadata:
+#       labels:
+#         app: spark-streaming
+#     spec:
+#       containers:
+#         - name: spark
+#           image: phantaii/bigdata_project:latest #SỬA
+#           imagePullPolicy: Always
+#           command: ["/bin/bash", "-c"]
+#           args:
+#             - |
+#               # 1. Lấy IP của Pod hiện tại (Driver)
+#               MY_POD_IP=$(hostname -i)
+#               echo ">>> Driver IP is: $MY_POD_IP"
 
-              # # 2. Truyền IP đó vào cấu hình Spark để Worker biết đường kết nối lại
-              /opt/spark/bin/spark-submit \
-              --master spark://spark-master:7077 \
-              --deploy-mode client \
-              --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.11.1 \
-              --conf spark.driver.host=$MY_POD_IP \
-              --conf spark.driver.bindAddress=0.0.0.0 \
-              --conf spark.driver.port=30000 \
-              --conf spark.blockManager.port=30001 \
-              /app/src/spark_streaming.py
-              # /opt/spark/bin/spark-submit \
-              # --master spark://spark-master:7077 \
-              # --deploy-mode client \
-              # --conf spark.driver.host=$MY_POD_IP \
-              # --conf spark.driver.bindAddress=0.0.0.0 \
-              # --conf spark.driver.port=30000 \
-              # --conf spark.blockManager.port=30001 \
-              # /app/src/spark_streaming.py
-      restartPolicy: Always
+#               # # 2. Truyền IP đó vào cấu hình Spark để Worker biết đường kết nối lại
+#               /opt/spark/bin/spark-submit \
+#               --master spark://spark-master:7077 \
+#               --deploy-mode client \
+#               --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.11.1 \
+#               --conf spark.driver.host=$MY_POD_IP \
+#               --conf spark.driver.bindAddress=0.0.0.0 \
+#               --conf spark.driver.port=30000 \
+#               --conf spark.blockManager.port=30001 \
+#               /app/src/spark_streaming.py
+#               # /opt/spark/bin/spark-submit \
+#               # --master spark://spark-master:7077 \
+#               # --deploy-mode client \
+#               # --conf spark.driver.host=$MY_POD_IP \
+#               # --conf spark.driver.bindAddress=0.0.0.0 \
+#               # --conf spark.driver.port=30000 \
+#               # --conf spark.blockManager.port=30001 \
+#               # /app/src/spark_streaming.py
+#       restartPolicy: Always
 ---
 # --- Spark Processor: Xử lý data (MinIO -> Cassandra) ---
 apiVersion: batch/v1
@@ -100,7 +100,8 @@ kind: CronJob
 metadata:
   name: spark-processor
 spec:
-  schedule: "*/2 * * * *" # Chạy định kỳ 1 phút/lần
+  ############## THU + TÀI #################
+  schedule: "*/2 * * * *" # Chạy định kỳ 2 phút/lần
   concurrencyPolicy: Forbid # Không cho phép 2 job chạy chồng chéo
   jobTemplate:
     spec:
@@ -108,7 +109,7 @@ spec:
         spec:
           containers:
             - name: spark
-              image: baokieu/my-repo:v1
+              image: phantaii/bigdata_project:latest #SỬA
               imagePullPolicy: Always
               command: ["/bin/bash", "-c"]
               args:

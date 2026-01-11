@@ -16,7 +16,7 @@ metadata:
   name: cassandra
 spec:
   serviceName: cassandra
-  replicas: 3 # Tối thiểu cho HA là 3 node
+  replicas: 1 # Giảm xuống 1 node để tiết kiệm tài nguyên
   selector:
     matchLabels:
       app: cassandra
@@ -43,9 +43,9 @@ spec:
 
           env:
             - name: MAX_HEAP_SIZE
-              value: "512M"
+              value: "256M"
             - name: HEAP_NEWSIZE
-              value: "128M"
+              value: "64M"
             - name: CASSANDRA_SEEDS
               # Chỉ định node đầu tiên làm Seed để node thứ 2 join vào
               value: "cassandra-0.cassandra.default.svc.cluster.local"
@@ -68,4 +68,4 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 5Gi
+            storage: 2Gi
