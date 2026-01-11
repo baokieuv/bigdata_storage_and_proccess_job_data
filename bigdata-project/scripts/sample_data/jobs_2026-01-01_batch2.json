@@ -1,0 +1,16 @@
+[
+  {
+    "job_title": "Junior Developer",
+    "company_name": "StartupXYZ",
+    "experience_level": "Junior",
+    "work_type": "Remote",
+    "salary_in_usd": 65000
+  },
+  {
+    "job_title": "Mid-level Analyst",
+    "company_name": "DataCo",
+    "experience_level": "Mid-level",
+    "work_type": "Hybrid",
+    "salary_in_usd": 85000
+  }
+]

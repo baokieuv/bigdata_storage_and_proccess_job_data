@@ -1,0 +1,7 @@
+# Requirements file for generating sample data
+# Không cần install gì thêm, chỉ dùng Python standard library
+# (json, random, datetime, os)
+
+# Nếu muốn chạy Spark job locally để test:
+# pyspark==3.5.1
+# cassandra-driver==3.29.0

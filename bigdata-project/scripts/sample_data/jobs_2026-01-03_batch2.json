@@ -1,0 +1,16 @@
+[
+  {
+    "job_title": "Junior Intern",
+    "company_name": "Startup Hub",
+    "experience_level": "Entry-level",
+    "work_type": "Full-time",
+    "salary_in_usd": 45000
+  },
+  {
+    "job_title": "Product Manager",
+    "company_name": "ProductCo",
+    "experience_level": "Mid-level",
+    "work_type": "Hybrid",
+    "salary_in_usd": 110000
+  }
+]

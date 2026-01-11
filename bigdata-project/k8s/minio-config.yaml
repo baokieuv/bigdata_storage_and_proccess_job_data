@@ -1,17 +1,18 @@
 apiVersion: v1
 kind: Service
-metadata: 
+metadata:
   name: minio
 spec:
-  # type: ClusterIP
+  type: NodePort
   ports:
     - port: 9000
-      name: api     # Port để code (Spark/Python) kết nối
+      name: api # Port để code (Spark/Python) kết nối
       targetPort: 9000
+      nodePort: 30900
     - port: 9001
       name: console # Port để vào Web UI quản trị
       targetPort: 9001
-  clusterIP: None   # Headless Service: Để các Pod tìm thấy nhau qua DNS (minio-0, minio-1...)
+      nodePort: 30901
   selector:
     app: minio
 ---
@@ -21,7 +22,7 @@ metadata:
   name: minio
 spec:
   serviceName: minio
-  replicas: 4     # MinIO Distributed yêu cầu tối thiểu 4 ổ đĩa (ở đây là 4 pod) để chạy Erasure Coding
+  replicas: 4 # MinIO Distributed yêu cầu tối thiểu 4 ổ đĩa (ở đây là 4 pod) để chạy Erasure Coding
   selector:
     matchLabels:
       app: minio
@@ -31,21 +32,21 @@ spec:
         app: minio
     spec:
       containers:
-      - name: minio
-        image: minio/minio:RELEASE.2023-09-30T07-02-29Z
-        command:
-        - /bin/sh
-        - -c
-        - |
-          minio server http://minio-{0...3}.minio.default.svc.cluster.local/data --console-address ":9001"
-        env:
-        - name: MINIO_ROOT_USER
-          value: "minioadmin"
-        - name: MINIO_ROOT_PASSWORD
-          value: "minioadmin"
-        volumeMounts:
-        - name: data
-          mountPath: /data
+        - name: minio
+          image: minio/minio:RELEASE.2023-09-30T07-02-29Z
+          command:
+            - /bin/sh
+            - -c
+            - |
+              minio server http://minio-{0...3}.minio.default.svc.cluster.local/data --console-address ":9001"
+          env:
+            - name: MINIO_ROOT_USER
+              value: "minioadmin"
+            - name: MINIO_ROOT_PASSWORD
+              value: "minioadmin"
+          volumeMounts:
+            - name: data
+              mountPath: /data
       volumes:
-      - name: data
-        emptyDir: {}    # Dùng ổ tạm trên RAM/Disk của node
+        - name: data
+          emptyDir: {} # Dùng ổ tạm trên RAM/Disk của node

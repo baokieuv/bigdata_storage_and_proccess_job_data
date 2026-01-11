@@ -1,0 +1,16 @@
+[
+  {
+    "job_title": "DevOps Engineer",
+    "company_name": "CloudInc",
+    "experience_level": "Mid-level",
+    "work_type": "Remote",
+    "salary_in_usd": 95000
+  },
+  {
+    "job_title": "QA Tester",
+    "company_name": "QualityFirst",
+    "experience_level": "Entry-level",
+    "work_type": "Full-time",
+    "salary_in_usd": 55000
+  }
+]

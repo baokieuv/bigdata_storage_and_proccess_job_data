@@ -1,0 +1,33 @@
+FROM apache/spark:3.5.1
+
+USER root
+
+# Tạo thư mục cho JARs và application
+RUN mkdir -p /opt/spark/jars-extra /opt/spark/jobs
+
+# Download các JAR dependencies cần thiết
+# AWS SDK cho S3/MinIO
+RUN curl -L -o /opt/spark/jars-extra/aws-java-sdk-bundle-1.12.367.jar \
+    https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.367/aws-java-sdk-bundle-1.12.367.jar
+
+# Hadoop AWS
+RUN curl -L -o /opt/spark/jars-extra/hadoop-aws-3.3.4.jar \
+    https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar
+
+# Spark Cassandra Connector
+RUN curl -L -o /opt/spark/jars-extra/spark-cassandra-connector-assembly_2.12-3.4.1.jar \
+    https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.12/3.4.1/spark-cassandra-connector-assembly_2.12-3.4.1.jar
+
+# Copy application code
+COPY src/spark_job.py /opt/spark/jobs/
+
+# Set permissions
+RUN chmod -R 755 /opt/spark/jars-extra /opt/spark/jobs
+
+# Chuyển về spark user
+USER spark
+
+# Set SPARK_EXTRA_CLASSPATH để load JARs
+ENV SPARK_EXTRA_CLASSPATH=/opt/spark/jars-extra/*
+
+WORKDIR /opt/spark/jobs
