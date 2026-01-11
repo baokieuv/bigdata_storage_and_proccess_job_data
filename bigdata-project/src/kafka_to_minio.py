@@ -38,7 +38,7 @@ while consumer is None:
         print("Kafka not ready, retrying in 5s...")
         time.sleep(5)
 
-BATCH_SIZE = 10         # Đủ 10 bản ghi thì ghi file
+BATCH_SIZE = 10         # Đủ 10 bản ghi thì ghi file    
 BATCH_TIMEOUT = 120      # Hoặc đủ 120 giây (2 phút) thì ghi file
 
 buffer = []
