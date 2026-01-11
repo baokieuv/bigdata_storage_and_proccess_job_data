@@ -1,7 +1,10 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, avg, count, max, min, current_timestamp, lit
+import pyspark.sql.functions as F
+from datetime import datetime
 import sys
 
+# Khởi tạo Spark Session với config cho MinIO và Cassandr
 spark = SparkSession.builder \
     .appName("JobAnalyticsBatch") \
     .config("spark.hadoop.fs.s3a.endpoint", "http://minio.default.svc.cluster.local:9000") \
@@ -22,6 +25,69 @@ spark.sparkContext.setLogLevel("ERROR")
 BUCKET_URL = "s3a://job-raw-data/"
 STATE_FILE = "batch_state.txt" 
 BATCH_SIZE = 10
+FILE_PREFIX = "job_"
+FILE_SUFFIX = ".json"
+
+def prepare_and_clean_data(df):
+    """Chuẩn hóa dữ liệu batch dựa theo logic spark_job cũ."""
+    print("Preparing job dataset before aggregations...")
+
+    salary_columns = ["normalized_salary", "min_salary", "max_salary", "med_salary"]
+    for col_name in salary_columns:
+        if col_name in df.columns:
+            df = df.withColumn(
+                f"{col_name}_numeric",
+                F.regexp_replace(F.col(col_name), "[^0-9.-]", "").cast("double")
+            )
+
+    if "title" in df.columns:
+        lowered_title = F.lower(F.col("title"))
+        df = df.withColumn(
+            "experience_level_derived",
+            F.when(lowered_title.contains("senior") | lowered_title.contains("sr.") |
+                   lowered_title.contains("lead") | lowered_title.contains("principal") |
+                   lowered_title.contains("director") | lowered_title.contains("manager"), "Senior")
+             .when(lowered_title.contains("mid") | lowered_title.contains("middle") |
+                   lowered_title.contains("experienced"), "Mid-level")
+             .when(lowered_title.contains("junior") | lowered_title.contains("jr.") |
+                   lowered_title.contains("entry") | lowered_title.contains("fresh"), "Junior")
+             .when(lowered_title.contains("intern") | lowered_title.contains("trainee"), "Intern")
+             .otherwise("Not specified")
+        )
+
+    if "formatted_work_type" in df.columns:
+        lowered_work = F.lower(F.col("formatted_work_type"))
+        df = df.withColumn(
+            "work_type_clean",
+            F.when(lowered_work.contains("full"), "Full-time")
+             .when(lowered_work.contains("part"), "Part-time")
+             .when(lowered_work.contains("contract"), "Contract")
+             .when(lowered_work.contains("intern"), "Internship")
+             .when(lowered_work.contains("remote"), "Remote")
+             .when(lowered_work.contains("hybrid"), "Hybrid")
+             .otherwise(F.col("formatted_work_type"))
+        )
+
+    if "location" in df.columns:
+        df = df.withColumn(
+            "city",
+            F.when(F.col("location").contains(","), F.trim(F.split(F.col("location"), ",")[0]))
+             .otherwise(F.col("location"))
+        )
+
+    numeric_replacements = {
+        "applies": "applies_numeric",
+        "views": "views_numeric"
+    }
+    for source_col, numeric_col in numeric_replacements.items():
+        if source_col in df.columns:
+            df = df.withColumn(
+                numeric_col,
+                F.regexp_replace(F.col(source_col), "[^0-9]", "").cast("integer")
+            )
+
+    print("Data preparation complete.")
+    return df
 
 def get_hadoop_fs(spark_session):
     sc = spark_session.sparkContext
@@ -31,6 +97,7 @@ def get_hadoop_fs(spark_session):
     return fs, sc._gateway.jvm.org.apache.hadoop.fs.Path
 
 def get_files_to_process():
+    today_prefix = f"{FILE_PREFIX}{datetime.now().strftime('%d_%m_%Y')}_"
     fs, Path = get_hadoop_fs(spark)
     try:
         file_statuses = fs.listStatus(Path(BUCKET_URL))
@@ -41,7 +108,7 @@ def get_files_to_process():
     all_files = []
     for status in file_statuses:
         fname = status.getPath().getName()
-        if fname.startswith("jobs_") and fname.endswith(".json"):
+        if fname.startswith(today_prefix) and fname.endswith(FILE_SUFFIX):
             all_files.append(fname)
     all_files.sort()
 
@@ -88,6 +155,9 @@ try:
     if len(files_to_read) > 0:
         print(f"Processing {len(files_to_read)} files...")
         df = spark.read.json(files_to_read)
+        record_count = df.count()
+        print(f"Loaded {record_count} rows from MinIO")
+        df = prepare_and_clean_data(df)
         print(f"Read done {len(files_to_read)} files...")
         if not df.rdd.isEmpty():
             df_clean = df \
