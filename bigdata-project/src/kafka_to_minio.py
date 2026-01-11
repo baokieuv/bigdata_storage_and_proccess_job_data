@@ -2,6 +2,7 @@ import json
 import time
 import io
 import uuid
+from datetime import datetime
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 from minio import Minio
@@ -37,15 +38,23 @@ while consumer is None:
         print("Kafka not ready, retrying in 5s...")
         time.sleep(5)
 
+BATCH_SIZE = 10         # Đủ 10 bản ghi thì ghi file
+BATCH_TIMEOUT = 60      # Hoặc đủ 60 giây (1 phút) thì ghi file
+
 buffer = []
 last_flush = time.time()
+
+print(f"Listening... (Flush rule: {BATCH_SIZE} records or {BATCH_TIMEOUT}s)")
 
 for message in consumer:
     data = message.value
     buffer.append(data)
 
-    if (len(buffer) >= 10) or (time.time() - last_flush > 30 and len(buffer) > 0):
-        file_name = f"jobs_{int(time.time())}_{uuid.uuid4()}.json"
+    current_time = time.time()
+    if (len(buffer) >= BATCH_SIZE) or ((current_time - last_flush > BATCH_TIMEOUT) and len(buffer) > 0):
+        date_str = datetime.now().strftime("%d_%m_%Y")
+        file_name = f"job_{date_str}_{uuid.uuid4()}.json"
+        
         data_bytes = json.dumps(buffer).encode('utf-8')
         try:
             client.put_object(
