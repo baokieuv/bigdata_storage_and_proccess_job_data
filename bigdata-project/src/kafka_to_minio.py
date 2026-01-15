@@ -7,30 +7,36 @@ from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
 from minio import Minio
 
+# --- Configuration ---
+KAFKA_BOOTSTRAP = ['my-cluster-kafka-bootstrap.default.svc.cluster.local:9092']
+MINIO_ENDPOINT = "minio.default.svc.cluster.local:9000"
+ACCESS_KEY = "minioadmin"
+SECRET_KEY = "minioadmin"
+BUCKET_NAME = "job-raw-data"
+TOPIC = 'jobs-topic'
+
+# --- MinIO Setup ---
 client = Minio(
-    "minio.default.svc.cluster.local:9000",
-    access_key="minioadmin",       
-    secret_key="minioadmin", 
+    MINIO_ENDPOINT,
+    access_key=ACCESS_KEY,
+    secret_key=SECRET_KEY,
     secure=False
 )
 
-bucket_name = "job-raw-data"
-if not client.bucket_exists(bucket_name):
-    client.make_bucket(bucket_name)
+if not client.bucket_exists(BUCKET_NAME):
+    client.make_bucket(BUCKET_NAME)
 
+# --- Kafka Consumer Setup ---
 consumer = None
-topic = 'jobs-topic'
-
-# 2. Retry Loop cho Consumer
 print("MinIO Archiver starting...")
 while consumer is None:
     try:
         consumer = KafkaConsumer(
-            topic,
-            bootstrap_servers=['my-cluster-kafka-bootstrap.default.svc.cluster.local:9092'],
+            TOPIC,
+            bootstrap_servers=KAFKA_BOOTSTRAP,
             auto_offset_reset='earliest',
             enable_auto_commit=True,
-            group_id='minio-job-archiver',
+            group_id='minio-job-archiver-v2',
             value_deserializer=lambda x: json.loads(x.decode('utf-8'))
         )
         print("Connected to Kafka successfully!")
@@ -38,7 +44,7 @@ while consumer is None:
         print("Kafka not ready, retrying in 5s...")
         time.sleep(5)
 
-BATCH_SIZE = 10         # Đủ 10 bản ghi thì ghi file
+BATCH_SIZE = 50         # Đủ 50 bản ghi thì ghi file
 BATCH_TIMEOUT = 60      # Hoặc đủ 60 giây (1 phút) thì ghi file
 
 buffer = []
@@ -48,17 +54,23 @@ print(f"Listening... (Flush rule: {BATCH_SIZE} records or {BATCH_TIMEOUT}s)")
 
 for message in consumer:
     data = message.value
+    if 'ingest_timestamp' not in data:
+        data['ingest_timestamp'] = time.time()
+        
     buffer.append(data)
 
     current_time = time.time()
     if (len(buffer) >= BATCH_SIZE) or ((current_time - last_flush > BATCH_TIMEOUT) and len(buffer) > 0):
-        date_str = datetime.now().strftime("%d_%m_%Y")
-        file_name = f"job_{date_str}_{uuid.uuid4()}.json"
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        file_name = f"raw/event_date={date_str}/job_batch_{int(current_time)}_{uuid.uuid4()}.json"
         
         data_bytes = json.dumps(buffer).encode('utf-8')
         try:
             client.put_object(
-                bucket_name, file_name, io.BytesIO(data_bytes), len(data_bytes),
+                BUCKET_NAME, 
+                file_name, 
+                io.BytesIO(data_bytes), 
+                len(data_bytes),
                 content_type="application/json"
             )
             print(f"Uploaded {file_name} - Records: {len(buffer)}")

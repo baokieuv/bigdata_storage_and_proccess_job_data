@@ -16,7 +16,7 @@ metadata:
   name: cassandra
 spec:
   serviceName: cassandra
-  replicas: 3   # Tối thiểu cho HA là 3 node
+  replicas: 2   # Tối thiểu cho HA là 3 node
   selector:
     matchLabels:
       app: cassandra

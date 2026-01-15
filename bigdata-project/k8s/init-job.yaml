@@ -13,19 +13,73 @@ spec:
         args:
         - |
           sleep 10;
-          # Kết nối tới bất kỳ node nào
           mc alias set myminio http://minio-0.minio.default.svc.cluster.local:9000 minioadmin minioadmin;
           mc mb myminio/job-raw-data --ignore-existing;
+          echo "MinIO bucket created!";
+          
       # --- Task 2: Tạo Bảng trong Cassandra ---
       - name: init-cassandra
         image: cassandra:4.1
         command: ["/bin/sh", "-c"]
         args:
         - |
-          sleep 45; # Cassandra khởi động hơi lâu
+          sleep 45;
           cqlsh cassandra-0.cassandra.default.svc.cluster.local 9042 -e "
-            CREATE KEYSPACE IF NOT EXISTS job_metrics WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
+            -- Tạo Keyspace
+            CREATE KEYSPACE IF NOT EXISTS job_metrics 
+            WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
             
+            -- Table 1: Company Statistics (từ batch job)
+            CREATE TABLE IF NOT EXISTS job_metrics.daily_company_stats (
+              company_name_clean text,
+              source text,
+              report_date date,
+              job_count int,
+              avg_salary double,
+              min_salary double,
+              max_salary double,
+              salary_stddev double,
+              avg_views double,
+              avg_applies double,
+              remote_jobs_count int,
+              PRIMARY KEY ((company_name_clean, source), report_date)
+            ) WITH CLUSTERING ORDER BY (report_date DESC);
+            
+            -- Table 2: Location Statistics
+            CREATE TABLE IF NOT EXISTS job_metrics.location_stats (
+              location_country_clean text,
+              location_city text,
+              report_date date,
+              job_count int,
+              avg_salary double,
+              linkedin_jobs int,
+              adzuna_jobs int,
+              PRIMARY KEY ((location_country_clean), location_city, report_date)
+            ) WITH CLUSTERING ORDER BY (location_city ASC, report_date DESC);
+            
+            -- Table 3: Category & Experience Statistics
+            CREATE TABLE IF NOT EXISTS job_metrics.category_stats (
+              job_category text,
+              experience_level_final text,
+              report_date date,
+              job_count int,
+              avg_salary double,
+              median_salary double,
+              PRIMARY KEY ((job_category), experience_level_final, report_date)
+            ) WITH CLUSTERING ORDER BY (experience_level_final ASC, report_date DESC);
+            
+            -- Table 4: Source Comparison Statistics
+            CREATE TABLE IF NOT EXISTS job_metrics.source_stats (
+              source text,
+              report_date date,
+              total_jobs int,
+              avg_salary double,
+              jobs_with_salary int,
+              remote_jobs int,
+              PRIMARY KEY (source, report_date)
+            ) WITH CLUSTERING ORDER BY (report_date DESC);
+            
+            -- Table 5: Company Analytics (legacy - giữ lại để tương thích)
             CREATE TABLE IF NOT EXISTS job_metrics.company_analytics (
               company_name text,
               batch_id text,
@@ -35,7 +89,7 @@ spec:
               min_salary double,
               last_updated timestamp,
               PRIMARY KEY ((company_name), batch_id)
-            )WITH CLUSTERING ORDER BY (batch_id DESC);
+            ) WITH CLUSTERING ORDER BY (batch_id DESC);
           "
-          echo "Cassandra Keyspace & Table created!";
-      restartPolicy: OnFailure    # Nếu lỗi thì thử lại
+          echo "Cassandra Keyspace & Tables created!";
+      restartPolicy: OnFailure
