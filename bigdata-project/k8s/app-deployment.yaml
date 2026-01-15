@@ -39,13 +39,13 @@ spec:
         app: ingestor
     spec:
       containers:
-      - name: ingestor
-        image: baokieu/my-repo:v1
-        imagePullPolicy: Always
-        env:
-        - name: PYTHONUNBUFFERED
-          value: "1"
-        command: ["python3", "/app/src/kafka_to_minio.py"]
+        - name: ingestor
+          image: baokieu/my-repo:v1
+          imagePullPolicy: Always
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          command: ["python3", "/app/src/kafka_to_minio.py"]
 
 ---
 # 3. Spark Streaming (Kafka -> Elasticsearch)
@@ -113,7 +113,7 @@ spec:
               /opt/spark/bin/spark-submit \
               --master spark://spark-master:7077 \
               --deploy-mode client \
-              --packages org.apache.hadoop:hadoop-aws:3.3.4,org.elasticsearch:elasticsearch-spark-30_2.12:8.11.1,com.datastax.spark:spark-cassandra-connector_2.12:3.4.1 \
+              --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.4.1,org.elasticsearch:elasticsearch-spark-30_2.12:8.11.1 \
               --conf spark.driver.host=$MY_POD_IP \
               --conf spark.driver.bindAddress=0.0.0.0 \
               --conf spark.driver.port=30000 \
