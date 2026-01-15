@@ -20,7 +20,7 @@ spark = SparkSession.builder \
     .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
     .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-    .config("spark.cores.max", "8") \
+    .config("spark.cores.max", "12") \
     .config("spark.executor.cores", "2") \
     .config("spark.executor.memory", "512m") \
     .config("spark.cassandra.connection.host", "cassandra.default.svc.cluster.local") \
@@ -45,8 +45,8 @@ try:
     # ===== BƯỚC 1: DATA CLEANING & VALIDATION =====
     print("Step 1: Data Cleaning & Validation...")
     
-    # Loại bỏ duplicate dựa trên job_id và source
-    df_dedup = df_raw.dropDuplicates(['job_id', 'source'])
+    # Loại bỏ duplicate dựa trên job_id
+    df_dedup = df_raw.dropDuplicates(['job_id'])
     print(f"After deduplication: {df_dedup.count()} records")
     
     # Loại bỏ records với missing critical fields
@@ -77,19 +77,36 @@ try:
                         col("salary_min")).otherwise(None)) \
         .withColumn("salary_max_clean", 
                    when(col("salary_max").isNotNull() & (col("salary_max") > 0), 
-                        col("salary_max")).otherwise(None)) \
+                        col("salary_max")).otherwise(None)) 
+        
+    # Quy đổi GBP sang USD (tỷ giá ước lượng: 1 GBP = 1.27 USD)
+    df_transformed = df_transformed \
+        .withColumn("salary_min_usd",
+                   when(col("salary_currency") == "GBP", col("salary_min_clean") * 1.27)
+                   .otherwise(col("salary_min_clean"))) \
+        .withColumn("salary_max_usd",
+                   when(col("salary_currency") == "GBP", col("salary_max_clean") * 1.27)
+                   .otherwise(col("salary_max_clean")))
+        # .withColumn("salary_avg", 
+        #            when((col("salary_min_clean").isNotNull()) & (col("salary_max_clean").isNotNull()),
+        #                 (col("salary_min_clean") + col("salary_max_clean")) / 2)
+        #            .when(col("salary_max_clean").isNotNull(), col("salary_max_clean"))
+        #            .when(col("salary_min_clean").isNotNull(), col("salary_min_clean"))
+        #            .otherwise(None))
+    # Tính average salary
+    df_transformed = df_transformed \
         .withColumn("salary_avg", 
-                   when((col("salary_min_clean").isNotNull()) & (col("salary_max_clean").isNotNull()),
-                        (col("salary_min_clean") + col("salary_max_clean")) / 2)
-                   .when(col("salary_max_clean").isNotNull(), col("salary_max_clean"))
-                   .when(col("salary_min_clean").isNotNull(), col("salary_min_clean"))
+                   when((col("salary_min_usd").isNotNull()) & (col("salary_max_usd").isNotNull()),
+                        (col("salary_min_usd") + col("salary_max_usd")) / 2)
+                   .when(col("salary_max_usd").isNotNull(), col("salary_max_usd"))
+                   .when(col("salary_min_usd").isNotNull(), col("salary_min_usd"))
                    .otherwise(None))
     
     # Tính salary range
     df_transformed = df_transformed \
         .withColumn("salary_range", 
-                   when(col("salary_max_clean").isNotNull() & col("salary_min_clean").isNotNull(),
-                        col("salary_max_clean") - col("salary_min_clean"))
+                   when(col("salary_max_usd").isNotNull() & col("salary_min_usd").isNotNull(),
+                        col("salary_max_usd") - col("salary_min_usd"))
                    .otherwise(None))
     
     # Phân loại salary range
@@ -120,12 +137,15 @@ try:
     # Extract job category từ title (simplified)
     df_transformed = df_transformed \
         .withColumn("job_category",
-                   when(col("title_clean").rlike("(?i)software|developer|engineer|programming"), "Software Engineering")
-                   .when(col("title_clean").rlike("(?i)data|analyst|scientist|analytics"), "Data & Analytics")
-                   .when(col("title_clean").rlike("(?i)manager|management|director"), "Management")
-                   .when(col("title_clean").rlike("(?i)marketing|social media|seo"), "Marketing")
-                   .when(col("title_clean").rlike("(?i)sales|account"), "Sales")
-                   .when(col("title_clean").rlike("(?i)design|designer|ux|ui"), "Design")
+                   when(col("title_clean").rlike("(?i)software|developer|engineer|programming|backend|frontend|fullstack"), "Software Engineering")
+                   .when(col("title_clean").rlike("(?i)data|analyst|scientist|analytics|bi|business intelligence"), "Data & Analytics")
+                   .when(col("title_clean").rlike("(?i)manager|management|director|product manager"), "Management")
+                   .when(col("title_clean").rlike("(?i)marketing|social media|seo|content|digital marketing"), "Marketing")
+                   .when(col("title_clean").rlike("(?i)sales|account|business development"), "Sales")
+                   .when(col("title_clean").rlike("(?i)design|designer|ux|ui|graphic"), "Design")
+                   .when(col("title_clean").rlike("(?i)devops|cloud|infrastructure|sre"), "DevOps/Cloud")
+                   .when(col("title_clean").rlike("(?i)qa|quality|test|tester"), "QA/Testing")
+                   .when(col("title_clean").rlike("(?i)hr|human resource|recruiter"), "Human Resources")
                    .otherwise("Other"))
     
     # Chuẩn hóa work_type
@@ -135,7 +155,7 @@ try:
                    .when(col("work_type").rlike("(?i)part"), "PART_TIME")
                    .when(col("work_type").rlike("(?i)contract"), "CONTRACT")
                    .when(col("work_type").rlike("(?i)temporary"), "TEMPORARY")
-                   .otherwise(upper(col("work_type"))))
+                   .otherwise("Other"))
     
     # Tính toán thời gian từ khi post
     df_transformed = df_transformed \
@@ -152,6 +172,13 @@ try:
                    .when((col("days_since_posted") > 7) & (col("days_since_posted") <= 30), "Active (1-4 weeks)")
                    .otherwise("Old (> 30 days)"))
     
+    
+    # Extract day of week và month để phân tích xu hướng
+    df_transformed = df_transformed \
+        .withColumn("posted_day_of_week", dayofweek(col("listed_date"))) \
+        .withColumn("posted_month", month(col("listed_date"))) \
+        .withColumn("posted_quarter", quarter(col("listed_date")))
+        
     # Thêm metadata
     df_transformed = df_transformed \
         .withColumn("ingest_type", lit("batch")) \
@@ -172,24 +199,31 @@ try:
         .withColumn("is_high_demand",
                    when((col("views") > 100) & (col("competition_score") < 5), True)
                    .otherwise(False))
+        
+    # Phân loại theo region (US vs UK/EU)
+    df_transformed = df_transformed \
+        .withColumn("region",
+                   when(col("location_country_clean") == "US", "North America")
+                   .when(col("location_country_clean") == "UK", "Europe")
+                   .otherwise("Other"))
     
     # ===== BƯỚC 4: WRITE TO ELASTICSEARCH (Detail Data) =====
     print("Step 4: Writing detail data to Elasticsearch...")
     
+
     df_es = df_transformed.select(
         col("job_id"),
-        col("source"),
         col("company_name_clean").alias("company_name"),
         col("title_clean").alias("title"),
         col("location_clean").alias("location"),
         col("location_country_clean").alias("country"),
         col("location_city").alias("city"),
-        col("salary_min_clean").alias("salary_min"),
-        col("salary_max_clean").alias("salary_max"),
+        col("region"),
+        col("salary_min_usd").alias("salary_min"),
+        col("salary_max_usd").alias("salary_max"),
         col("salary_avg"),
         col("salary_range"),
         col("salary_category"),
-        col("salary_currency"),
         col("work_type_clean").alias("work_type"),
         col("contract_type"),
         col("experience_level_final").alias("experience_level"),
@@ -199,6 +233,8 @@ try:
         col("event_date"),
         col("days_since_posted"),
         col("job_freshness"),
+        col("posted_day_of_week"),
+        col("posted_month"),
         col("views"),
         col("applies"),
         col("competition_score"),
@@ -220,11 +256,13 @@ try:
     print("Step 5: Creating aggregations for Cassandra...")
     
     # Agg 1: Company-level statistics
-    df_company_stats = df_transformed.groupBy("company_name_clean", "source").agg(
+
+    # Agg 1: Company-level statistics
+    df_company_stats = df_transformed.groupBy("company_name_clean").agg(
         count("job_id").alias("job_count"),
         avg("salary_avg").alias("avg_salary"),
-        min("salary_min_clean").alias("min_salary"),
-        max("salary_max_clean").alias("max_salary"),
+        min("salary_min_usd").alias("min_salary"),
+        max("salary_max_usd").alias("max_salary"),
         stddev("salary_avg").alias("salary_stddev"),
         avg("views").alias("avg_views"),
         avg("applies").alias("avg_applies"),
@@ -233,16 +271,15 @@ try:
     
     df_company_stats.write \
         .format("org.apache.spark.sql.cassandra") \
-        .options(table="daily_company_stats", keyspace="job_metrics") \
+        .options(table="company_stats", keyspace="job_metrics") \
         .mode("append") \
         .save()
     
     # Agg 2: Location-level statistics
-    df_location_stats = df_transformed.groupBy("location_country_clean", "location_city").agg(
+    df_location_stats = df_transformed.groupBy("location_country_clean", "location_city", "region").agg(
         count("job_id").alias("job_count"),
         avg("salary_avg").alias("avg_salary"),
-        count(when(col("source") == "linkedin", 1)).alias("linkedin_jobs"),
-        count(when(col("source") == "adzuna", 1)).alias("adzuna_jobs")
+        sum(when(col("remote_allowed") == True, 1).otherwise(0)).alias("remote_jobs_count")
     ).withColumn("report_date", lit(YESTERDAY))
     
     df_location_stats.write \
@@ -255,7 +292,9 @@ try:
     df_category_stats = df_transformed.groupBy("job_category", "experience_level_final").agg(
         count("job_id").alias("job_count"),
         avg("salary_avg").alias("avg_salary"),
-        percentile_approx("salary_avg", 0.5).alias("median_salary")
+        percentile_approx("salary_avg", 0.5).alias("median_salary"),
+        percentile_approx("salary_avg", 0.25).alias("p25_salary"),
+        percentile_approx("salary_avg", 0.75).alias("p75_salary")
     ).withColumn("report_date", lit(YESTERDAY))
     
     df_category_stats.write \
@@ -264,17 +303,40 @@ try:
         .mode("append") \
         .save()
     
-    # Agg 4: Source comparison statistics
-    df_source_stats = df_transformed.groupBy("source").agg(
+    # Agg 4: Work type statistics
+    df_worktype_stats = df_transformed.groupBy("work_type_clean").agg(
         count("job_id").alias("total_jobs"),
         avg("salary_avg").alias("avg_salary"),
-        count(when(col("salary_avg").isNotNull(), 1)).alias("jobs_with_salary"),
-        sum(when(col("remote_allowed") == True, 1).otherwise(0)).alias("remote_jobs")
+        count(when(col("salary_avg").isNotNull(), 1)).alias("jobs_with_salary")
     ).withColumn("report_date", lit(YESTERDAY))
     
-    df_source_stats.write \
+    df_worktype_stats.write \
         .format("org.apache.spark.sql.cassandra") \
-        .options(table="source_stats", keyspace="job_metrics") \
+        .options(table="worktype_stats", keyspace="job_metrics") \
+        .mode("append") \
+        .save()
+        
+    
+    # Agg 5: Temporal statistics (posting trends)
+    df_temporal_stats = df_transformed.groupBy("posted_day_of_week", "posted_month").agg(
+        count("job_id").alias("job_count"),
+        avg("salary_avg").alias("avg_salary")
+    ).withColumn("report_date", lit(YESTERDAY))
+    
+    df_temporal_stats.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .options(table="temporal_stats", keyspace="job_metrics") \
+        .mode("append") \
+        .save()
+        
+    # Agg 6: Salary range distribution
+    df_salary_distribution = df_transformed.groupBy("salary_category", "job_category").agg(
+        count("job_id").alias("job_count")
+    ).withColumn("report_date", lit(YESTERDAY))
+    
+    df_salary_distribution.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .options(table="salary_distribution", keyspace="job_metrics") \
         .mode("append") \
         .save()
     
